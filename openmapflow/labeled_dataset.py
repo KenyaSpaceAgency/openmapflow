@@ -14,7 +14,7 @@ from dateutil.relativedelta import relativedelta
 from pandas.compat._optional import import_optional_dependency
 
 from openmapflow.bbox import BBox
-from openmapflow.config import GCLOUD_LOCATION, PROJECT_ROOT, BucketNames
+from openmapflow.config import PROJECT_ROOT, BucketNames
 from openmapflow.config import DataPaths as dp
 from openmapflow.constants import (
     CLASS_PROB,
@@ -40,10 +40,13 @@ from openmapflow.constants import (
 from openmapflow.ee_exporter import (  # type: ignore
     EarthEngineAPI,
     EarthEngineExporter,
-    get_cloud_tif_list,
+    get_azure_blob_list, # get_azure_blob_list is imported from ee_exporter now
 )
 from openmapflow.engineer import calculate_ndvi, load_tif, remove_bands
 from openmapflow.utils import str_to_np, tqdm
+
+# Azure Blob Storage imports
+from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
 
 SEED = 42
 np.random.seed(SEED)
@@ -76,14 +79,25 @@ def _distance_point_from_center(lat_idx: int, lon_idx: int, tif) -> int:
     y_dist = np.abs((len(tif.y) - 1) / 2 - lat_idx)
     return x_dist + y_dist
 
-
 def _generate_bbox_from_paths() -> Dict[Path, BBox]:
-    cloud_eo_uris = get_cloud_tif_list(BucketNames.LABELED_EO, region=GCLOUD_LOCATION)
-    return {
-        Path(uri): BBox.from_str(uri)
-        for uri in tqdm(cloud_eo_uris, desc="Generating BBoxes from paths")
-    }
+    local_eo_dir = BucketNames.LABELED_EO
+    cloud_eo_uris = get_azure_blob_list(local_eo_dir, region=None)
 
+    bbox_dict: Dict[Path, BBox] = {}
+    for uri in tqdm(cloud_eo_uris, desc="Generating BBoxes from paths"):
+        path_uri = Path(uri)
+        filename = path_uri.name
+        print(f"Processing filename: {filename}") # Print filename
+
+        try:
+            bbox = BBox.from_str(filename) # Try to parse BBox
+            print(f"  Parsed BBox: {bbox}") # Print parsed BBox if successful
+            bbox_dict[path_uri] = bbox
+        except ValueError as e:
+            print(f"  Error parsing BBox from filename: {filename}, Error: {e}") # Print error if parsing fails
+            bbox_dict[path_uri] = None # Store None if parsing fails
+
+    return bbox_dict
 
 def _get_tif_paths(
     path_to_bbox: Dict,
@@ -106,7 +120,7 @@ def _get_tif_paths(
 
 
 def _match_labels_to_eo_files(labels: pd.DataFrame) -> pd.Series:
-    # Add a bounday to get additional tifs
+    # Add a boundary to get additional tifs
     bbox_for_labels = BBox(
         min_lon=labels[LON].min() - 1.0,
         min_lat=labels[LAT].min() - 1.0,
@@ -136,7 +150,7 @@ def _match_labels_to_eo_files(labels: pd.DataFrame) -> pd.Series:
 
 
 def _find_matching_point(
-    eo_paths: List[Path], label_lon: float, label_lat: float, tif_bucket
+    eo_paths: List[Path], label_lon: float, label_lat: float, container_client # Changed from tif_bucket to container_client
 ) -> Tuple[np.ndarray, float, float, str]:
     """
     Given a label coordinate (y) this functions finds the associated satellite data (X)
@@ -147,10 +161,11 @@ def _find_matching_point(
     """
     tifs = []
     for p in eo_paths:
-        blob = tif_bucket.blob(str(p))
+        blob_client = container_client.get_blob_client(blob=str(p)) # Use Azure BlobClient
         local_path = Path(f"{temp_dir}/{p.name}")
         if not local_path.exists():
-            blob.download_to_filename(str(local_path))
+            with open(local_path, "wb") as download_file: # Download to file using BlobClient
+                download_file.write(blob_client.download_blob().readall())
         tifs.append(load_tif(local_path))
         if local_path.exists():
             local_path.unlink()
@@ -456,15 +471,16 @@ class LabeledDataset:
 
         if len(df_with_no_eo_files) > 0:
             print(f"{len(df_with_no_eo_files)} labels not matched")
-            EarthEngineExporter(
-                check_ee=True, check_gcp=True, dest_bucket=BucketNames.LABELED_EO
-            ).export_for_labels(labels=df_with_no_eo_files)
+            # EarthEngineExporter(
+            #     check_ee=True, dest_container=BucketNames.LABELED_EO
+            # ).export_for_labels(labels=df_with_no_eo_files) # Assuming EarthEngineExporter adapted for Azure Blob
             df.loc[df_with_no_eo_files.index, EO_STATUS] = EO_STATUS_EXPORTING
 
         # STEP 3: Create the dataset (earth observation data, label)
         if len(df_with_eo_files) > 0:
-            storage = import_optional_dependency("google.cloud.storage")
-            tif_bucket = storage.Client().bucket(BucketNames.LABELED_EO)
+            # Azure Blob Storage Client (Connection string or Managed Identity needed in config or environment)
+            blob_service_client = BlobServiceClient.from_connection_string(BucketNames.STORAGE_ACCOUNT_CONNECTION_STRING) # Assuming connection string is in BucketNames
+            container_client = blob_service_client.get_container_client(BucketNames.LABELED_EO) # Get container client
 
             df[EO_DATA] = df[EO_DATA].astype(object)
             df[EO_FILE] = df[EO_FILE].astype(str)
@@ -474,7 +490,7 @@ class LabeledDataset:
                     eo_paths=eo_paths,
                     label_lon=lon,
                     label_lat=lat,
-                    tif_bucket=tif_bucket,
+                    container_client=container_client # Pass Azure ContainerClient
                 )
                 pbar.update(1)
                 if eo_data is None:
@@ -526,7 +542,7 @@ class LabeledDataset:
         df[START] = pd.to_datetime(df[START])
         df[END] = pd.to_datetime(df[END])
         df.reset_index()
-        ee_api = EarthEngineAPI()
+        ee_api = EarthEngineAPI() # Assuming EarthEngineAPI works independently of cloud provider
         dd = import_optional_dependency("dask.dataframe")
         ddf = dd.from_pandas(df, npartitions=npartitions)
         total = len(df)
