@@ -1,4 +1,4 @@
-*.egg-info
+egg-info
 *.pyc
 
 .mypy_cache/
@@ -6,15 +6,10 @@
 
 build/
 dist/
-venv/
+.venv/
 
 **/wandb
 
 # Ignore generated credentials from google-github-actions/auth
 gha-creds-*.json
-<<<<<<< HEAD
-/test.txt
-.venv/
-=======
 /text.txt
->>>>>>> 7f129cbf (refactored azure code)

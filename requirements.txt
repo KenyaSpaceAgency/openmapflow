@@ -108,7 +108,6 @@ funcy==2.0
 fusepy==3.0.1
 gcsfs==2025.2.0
 geopandas==1.0.1
-git-filter-repo==2.47.0
 gitdb==4.0.12
 GitPython==3.1.44
 google-api-core==2.24.1
