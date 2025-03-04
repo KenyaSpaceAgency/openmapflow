@@ -1,47 +1,56 @@
-"""
-File for storing references to datasets.
-"""
-from datetime import date
-from typing import List
-
+import os
 import pandas as pd
-
-from openmapflow.config import PROJECT_ROOT, DataPaths
-from openmapflow.constants import CLASS_PROB, COUNTRY, END, LAT, LON, START, SUBSET
-from openmapflow.datasets import GeowikiLandcover2017
-from openmapflow.label_utils import train_val_test_split
-from openmapflow.labeled_dataset import LabeledDataset, create_datasets
-
-label_col = CLASS_PROB
+from google.cloud import storage
+from openmapflow.labeled_dataset import LabeledDataset
 
 
-# -----------------------------------------------------------------------------
-# Example custom dataset to be used as reference
-# -----------------------------------------------------------------------------
+# Define local dataset directory
+LOCAL_DATASET_DIR = "/home/mapflow/datasets"
+
+def download_csv_from_gcs(filename):
+    """Load dataset from a local file instead of GCS."""
+    local_path = os.path.join("/home/mapflow/Desktop/openmapflow/datasets", filename)  # Adjust this path as needed
+    if os.path.exists(local_path):
+        print(f"Using local dataset: {local_path}")
+        return local_path
+    else:
+        raise FileNotFoundError(f"Dataset {filename} not found locally.")
+
+# Define dataset classes inheriting from LabeledDataset
+class GeowikiLandcover2017(LabeledDataset):
+    def load_labels(self):
+        """Load dataset from a local file."""
+        csv_path = "/home/mapflow/Desktop/openmapflow/datasets/GeowikiLandcover2017.csv"  
+        df = pd.read_csv(csv_path)
+    
+        print("Columns in the dataset:", df.columns)  # Debugging step
+    
+        if "class_prob" not in df.columns:
+            raise KeyError("The dataset does not contain a 'class_prob' column.")
+    
+        df = df[df["class_prob"] != 0.5].copy()
+        return df   
 class TogoCrop2019(LabeledDataset):
-    def load_labels(self) -> pd.DataFrame:
-        # Read in raw label file
-        df = pd.read_csv(PROJECT_ROOT / DataPaths.RAW_LABELS / "Togo_2019.csv")
+    def load_labels(self):
+        """Load dataset from a local file."""
+        csv_path = "/home/mapflow/Desktop/openmapflow/datasets/TogoCrop2019.csv"
+        df = pd.read_csv(csv_path)
 
-        # Rename coordinate columns to be used for getting Earth observation data
-        df.rename(columns={"latitude": LAT, "longitude": LON}, inplace=True)
+        print("Columns in the dataset:", df.columns)  # Debugging step
 
-        # Set start and end date for Earth observation data
-        df[START], df[END] = date(2019, 1, 1), date(2020, 12, 31)
+        if "class_prob" not in df.columns:
+            raise KeyError("The dataset does not contain a 'class_prob' column.")
 
-        # Set consistent label column
-        df[label_col] = df["crop"].astype(float)
-
-        # Split labels into train, validation, and test sets
-        df[SUBSET] = train_val_test_split(index=df.index, val=0.2, test=0.2)
-
-        # Set country column for later analysis
-        df[COUNTRY] = "Togo"
-
+        df = df[df["class_prob"] != 0.5].copy()
         return df
 
+class KenyaCrop201819(LabeledDataset):
+    def load_labels(self):
+        return pd.read_csv(download_csv_from_gcs("filterd_crops.csv"))
 
-datasets: List[LabeledDataset] = [GeowikiLandcover2017(), TogoCrop2019()]
+# Ensure instances of the correct class
+datasets = [GeowikiLandcover2017(), TogoCrop2019(), KenyaCrop201819()]
 
-if __name__ == "__main__":
-    create_datasets(datasets)
+# Debugging: Check class types before calling create_datasets
+for d in datasets:
+    print(f"{d.__class__.__name__} is instance of LabeledDataset: {isinstance(d, LabeledDataset)}")

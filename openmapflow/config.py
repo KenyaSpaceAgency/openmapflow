@@ -48,11 +48,14 @@ CUSTOM_CONFIG = load_custom_config(PROJECT_ROOT / CONFIG_FILE)
 PROJECT = CUSTOM_CONFIG["project"]
 DEFAULT_CONFIG = load_default_config(PROJECT)
 CONFIG_YML = update_dict(DEFAULT_CONFIG, CUSTOM_CONFIG)
-GCLOUD_PROJECT_ID = CONFIG_YML["gcloud"]["project_id"]
-GCLOUD_LOCATION = CONFIG_YML["gcloud"]["location"]
-DOCKER_TAG = f"{GCLOUD_LOCATION}-docker.pkg.dev/{GCLOUD_PROJECT_ID}/{PROJECT}/{PROJECT}"
 
-os.environ["GOOGLE_CLOUD_PROJECT"] = GCLOUD_PROJECT_ID
+# Azure Blob Storage Configuration
+STORAGE_ACCOUNT_CONNECTION_STRING = os.environ.get("AZURE_STORAGE_CONNECTION_STRING", "DefaultEndpointsProtocol=https;AccountName=openmapflow;AccountKey=gBh30r5wqeU2HMhfG5jTmG0Ags++3rsYe1wTotQoxNK/EVnCnBCOt7ytHQrJuBya9/qMT/63xE3k+ASth7eOBQ==;EndpointSuffix=core.windows.net")
+# You can define default container names here or in your config.yml and load them similarly to GCS buckets
+LABELED_EO_CONTAINER_NAME = CONFIG_YML.get("azure", {}).get("labeled_eo_container", "openmap")
+INFERENCE_EO_CONTAINER_NAME = CONFIG_YML.get("azure", {}).get("inference_eo_container", "inference-eo-container")
+PREDS_CONTAINER_NAME = CONFIG_YML.get("azure", {}).get("preds_container", "preds-container")
+PREDS_MERGED_CONTAINER_NAME = CONFIG_YML.get("azure", {}).get("preds_merged_container", "preds-merged-container")
 
 
 class DataPaths:
@@ -75,10 +78,12 @@ class DataPaths:
 
 
 class BucketNames:
-    LABELED_EO = CONFIG_YML["gcloud"]["bucket_labeled_eo"]
-    INFERENCE_EO = CONFIG_YML["gcloud"]["bucket_inference_eo"]
-    PREDS = CONFIG_YML["gcloud"]["bucket_preds"]
-    PREDS_MERGED = CONFIG_YML["gcloud"]["bucket_preds_merged"]
+    # Azure Blob Storage Container Names
+    LABELED_EO = LABELED_EO_CONTAINER_NAME
+    INFERENCE_EO = INFERENCE_EO_CONTAINER_NAME
+    PREDS = PREDS_CONTAINER_NAME
+    PREDS_MERGED = PREDS_MERGED_CONTAINER_NAME
+    STORAGE_ACCOUNT_CONNECTION_STRING = STORAGE_ACCOUNT_CONNECTION_STRING # Add connection string to BucketNames for easier access
 
 
 def get_model_names_as_str() -> str:
@@ -93,13 +98,12 @@ def deploy_env_variables(empty_check: bool = True) -> str:
         "PROJECT": PROJECT,
         "MODELS_DIR": DataPaths.MODELS,
         "LIBRARY_DIR": LIBRARY_DIR,
-        "GCLOUD_PROJECT_ID": GCLOUD_PROJECT_ID,
-        "GCLOUD_LOCATION": GCLOUD_LOCATION,
-        "GCLOUD_BUCKET_LABELED_EO": BucketNames.LABELED_EO,
-        "GCLOUD_BUCKET_INFERENCE_EO": BucketNames.INFERENCE_EO,
-        "GCLOUD_BUCKET_PREDS": BucketNames.PREDS,
-        "GCLOUD_BUCKET_PREDS_MERGED": BucketNames.PREDS_MERGED,
-        "DOCKER_TAG": DOCKER_TAG,
+        # Azure Blob Storage related environment variables
+        "AZURE_STORAGE_CONNECTION_STRING": BucketNames.STORAGE_ACCOUNT_CONNECTION_STRING,
+        "AZURE_LABELED_EO_CONTAINER": BucketNames.LABELED_EO,
+        "AZURE_INFERENCE_EO_CONTAINER": BucketNames.INFERENCE_EO,
+        "AZURE_PREDS_CONTAINER": BucketNames.PREDS,
+        "AZURE_PREDS_MERGED_CONTAINER": BucketNames.PREDS_MERGED,
         "VERSION": VERSION,
     }
     if empty_check:
