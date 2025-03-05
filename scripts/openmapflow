@@ -1,0 +1,69 @@
+#!/bin/bash
+set -e
+librarydir() { python3 -c "from openmapflow.constants import LIBRARY_DIR; print(LIBRARY_DIR)"; }
+version() { python3 -c "from openmapflow.constants import VERSION; print(VERSION)"; }
+datasets() { python3 -c "from openmapflow.config import DataPaths; print(DataPaths.REPORT)"; }
+check_openmapflow_yaml() {
+    if [ ! -f "openmapflow.yaml" ]; then
+        echo "Please navigate to a directory containing openmapflow.yaml or create one by running: openmapflow generate"
+        return 1
+    fi
+}
+
+
+case $1 in
+    "cp")
+        cp -r "$(librarydir)"/"${@: -2:1}" "${@: -1:1}"
+        ;;
+    "create-datasets")
+        check_openmapflow_yaml
+        python -c "from datasets import datasets; from openmapflow.labeled_dataset import create_datasets; create_datasets(datasets)" "${@:2}"
+        ;;
+    "datapath")
+        check_openmapflow_yaml
+        python -c "from openmapflow.config import DataPaths; print(DataPaths.get('$2'))"
+        ;;
+    "datasets")
+        check_openmapflow_yaml
+        cat "$(datasets)"
+        ;;
+    "deploy")
+        check_openmapflow_yaml
+        source deploy.sh
+        ;;
+    "dir")
+        librarydir
+        ;;
+    "generate")
+        python "$(librarydir)/generate.py"
+        ;;
+    "ls")
+        ls "$(librarydir)/$2"
+        ;;
+    "verify")
+        check_openmapflow_yaml
+        python -c "from datasets import $2; from openmapflow.labeled_dataset import verify_df; verify_df($2().load_labels())"
+        ;;
+    "version")
+        version
+        ;;
+    "--version")
+        version
+        ;;
+    *)
+        echo "---------------------------------------------------------------------------------------------"
+        echo "                              OpenMapFlow CLI" 
+        echo "---------------------------------------------------------------------------------------------"
+        echo "openmapflow cp <source> <destination> - copy a file or directory from the library"
+        echo "openmapflow create-datasets - creates datasets for all datasets in datasets.py"
+        echo "openmapflow datapath <DATAPATH> - outputs a relative path to the data directory"
+        echo "openmapflow datasets - outputs a list of all datasets"
+        echo "openmapflow deploy - deploys Google Cloud Architecture for project"
+        echo "openmapflow dir - outputs openmapflow library directory"
+        echo "openmapflow generate - generates an openmapflow project"
+        echo "openmapflow help - outputs this message"
+        echo "openmapflow ls - lists files in openmapflow library directory"
+        echo "openmapflow verify <DATASET> - verifies a user declared LabeledDataset class in datasets.py"
+        echo "openmapflow version - package version"
+        ;;
+    esac

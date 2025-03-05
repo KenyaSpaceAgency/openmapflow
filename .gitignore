@@ -12,4 +12,9 @@ venv/
 
 # Ignore generated credentials from google-github-actions/auth
 gha-creds-*.json
+<<<<<<< HEAD
 /test.txt
+.venv/
+=======
+/text.txt
+>>>>>>> 7f129cbf (refactored azure code)
