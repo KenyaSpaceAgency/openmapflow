@@ -1,9 +1,0 @@
-[core]
-    remote = azure-remote
-['remote "azure-remote"']
-    url = azure://openmap
-    account_name = openmapflow
-<<<<<<< HEAD
-    connection_string = DefaultEndpointsProtocol=https;AccountName=openmapflow;AccountKey=gBh30r5wqeU2HMhfG5jTmG0Ags++3rsYe1wTotQoxNK/EVnCnBCOt7ytHQrJuBya9/qMT/63xE3k+ASth7eOBQ==;EndpointSuffix=core.windows.net
-=======
->>>>>>> 7f129cbf (refactored azure code)
