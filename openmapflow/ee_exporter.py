@@ -37,7 +37,7 @@ AZURE_STORAGE_ACCOUNT_KEY = "gBh30r5wqeU2HMhfG5jTmG0Ags++3rsYe1wTotQoxNK/EVnCnBC
 AZURE_CONTAINER_NAME = "openmapflow-labeled-eo"
 
 # Initialize Azure Blob Service Client
-connection_string = f"DefaultEndpointsProtocol=https;AccountName={AZURE_STORAGE_ACCOUNT_NAME};AccountKey={AZURE_STORAGE_ACCOUNT_KEY};EndpointSuffix=core.windows.net"
+connection_string = f""
 blob_service_client = BlobServiceClient.from_connection_string(connection_string)
 container_client = blob_service_client.get_container_client(AZURE_CONTAINER_NAME)
 

@@ -50,7 +50,7 @@ DEFAULT_CONFIG = load_default_config(PROJECT)
 CONFIG_YML = update_dict(DEFAULT_CONFIG, CUSTOM_CONFIG)
 
 # Azure Blob Storage Configuration
-STORAGE_ACCOUNT_CONNECTION_STRING = os.environ.get("AZURE_STORAGE_CONNECTION_STRING", "DefaultEndpointsProtocol=https;AccountName=openmapflow;AccountKey=gBh30r5wqeU2HMhfG5jTmG0Ags++3rsYe1wTotQoxNK/EVnCnBCOt7ytHQrJuBya9/qMT/63xE3k+ASth7eOBQ==;EndpointSuffix=core.windows.net")
+STORAGE_ACCOUNT_CONNECTION_STRING = os.environ.get("")
 # You can define default container names here or in your config.yml and load them similarly to GCS buckets
 LABELED_EO_CONTAINER_NAME = CONFIG_YML.get("azure", {}).get("labeled_eo_container", "openmap")
 INFERENCE_EO_CONTAINER_NAME = CONFIG_YML.get("azure", {}).get("inference_eo_container", "inference-eo-container")

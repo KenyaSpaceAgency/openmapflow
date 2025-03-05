@@ -4,6 +4,5 @@
     url = azure://openmap
     account_name = openmapflow
 <<<<<<< HEAD
-    connection_string = ""
-=======
+    ==
 >>>>>>> 7f129cbf (refactored azure code)
