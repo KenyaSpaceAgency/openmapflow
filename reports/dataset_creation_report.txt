@@ -1,0 +1,23 @@
+DATASET CREATION REPORT
+========================================
+
+Dataset: GeowikiLandcover2017
+Total entries: 976
+Entries with EO data: 976
+Status distribution:
+complete    976
+Name: EO_STATUS, dtype: int64
+
+Dataset: TogoCrop2019
+Total entries: 977
+Entries with EO data: 977
+Status distribution:
+complete    977
+Name: EO_STATUS, dtype: int64
+
+Dataset: KenyaCrop201819
+Total entries: 977
+Entries with EO data: 977
+Status distribution:
+complete    977
+Name: EO_STATUS, dtype: int64

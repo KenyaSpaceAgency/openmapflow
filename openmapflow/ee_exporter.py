@@ -5,14 +5,29 @@ import warnings
 from datetime import date, timedelta
 from typing import Dict, List, Optional, Union
 
-from typing import List
 import pandas as pd
 from azure.storage.blob import BlobServiceClient
+from dotenv import load_dotenv
+
 from openmapflow.bands import DAYS_PER_TIMESTEP, DYNAMIC_BANDS
 from openmapflow.bbox import BBox
 from openmapflow.constants import END, LAT, LON, START
 from openmapflow.utils import tqdm
 from openmapflow.config import BucketNames
+
+# Load environment variables
+load_dotenv()
+
+# Retrieve Azure credentials from environment
+AZURE_STORAGE_ACCOUNT_NAME = os.getenv('AZURE_STORAGE_ACCOUNT_NAME')
+AZURE_STORAGE_ACCOUNT_KEY = os.getenv('AZURE_STORAGE_ACCOUNT_KEY')
+AZURE_CONTAINER_NAME = os.getenv('AZURE_CONTAINER_NAME', 'openmapflow-labeled-eo')
+
+if not all([AZURE_STORAGE_ACCOUNT_NAME, AZURE_STORAGE_ACCOUNT_KEY, AZURE_CONTAINER_NAME]):
+    raise ValueError("Missing Azure Storage credentials. Please set environment variables.")
+
+# Construct connection string securely
+connection_string = f"DefaultEndpointsProtocol=https;AccountName={AZURE_STORAGE_ACCOUNT_NAME};AccountKey={AZURE_STORAGE_ACCOUNT_KEY};EndpointSuffix=core.windows.net"
 
 try:
     import ee
@@ -30,29 +45,25 @@ try:
 except ImportError:
     warnings.warn("ee_exporter requires earthengine-api, `pip install earthengine-api`")
 
-
-# === Azure Storage Configuration ===
-AZURE_STORAGE_ACCOUNT_NAME = "openmapflow"
-AZURE_STORAGE_ACCOUNT_KEY = "gBh30r5wqeU2HMhfG5jTmG0Ags++3rsYe1wTotQoxNK/EVnCnBCOt7ytHQrJuBya9/qMT/63xE3k+ASth7eOBQ=="
-AZURE_CONTAINER_NAME = "openmapflow-labeled-eo"
-
 # Initialize Azure Blob Service Client
-connection_string = f""
-blob_service_client = BlobServiceClient.from_connection_string(connection_string)
-container_client = blob_service_client.get_container_client(AZURE_CONTAINER_NAME)
+try:
+    blob_service_client = BlobServiceClient.from_connection_string(connection_string)
+    container_client = blob_service_client.get_container_client(AZURE_CONTAINER_NAME)
+except Exception as e:
+    print(f"Error connecting to Azure Blob Storage: {e}")
+    raise
 
 
 def get_azure_blob_list(container_name: str, region=None) -> List[str]:
     """
     Lists local file paths from a directory (simulating Azure Blob Storage).
-    ... (rest of docstring) ...
     """
-    satdata_dir_name = "openmapflow/satdata" # Define the directory name 
-    local_dir = os.path.join(os.getcwd(), satdata_dir_name) # Construct path relative to current working directory
-    local_dir = os.path.abspath(local_dir) # Get the absolute path (for clarity and to resolve symlinks)
+    satdata_dir_name = "openmapflow/satdata"
+    local_dir = os.path.join(os.getcwd(), satdata_dir_name)
+    local_dir = os.path.abspath(local_dir)
 
     print(f"Current working directory: {os.getcwd()}")
-    print(f"Constructed satdata directory path: {local_dir}") # Print the constructed path
+    print(f"Constructed satdata directory path: {local_dir}")
 
     if not os.path.isdir(local_dir):
         raise ValueError(f"Local directory not found: {local_dir}")
@@ -63,6 +74,7 @@ def get_azure_blob_list(container_name: str, region=None) -> List[str]:
             file_path = os.path.join(local_dir, filename)
             file_paths.append(file_path)
     return file_paths
+
 
 def make_combine_bands_function(bands):
     def combine_bands(current, previous):
@@ -131,8 +143,8 @@ class EarthEngineExporter:
         self.check_ee = check_ee
         self.ee_task_list = get_ee_task_list() if self.check_ee else []
         self.check_azure = check_azure
-        self.azure_blob_list = get_azure_blob_list(container_name=dest_container) if self.check_azure and dest_container else [] # Use dest_container
-        self.dest_container = dest_container # Store it as an instance attribute
+        self.azure_blob_list = get_azure_blob_list(container_name=dest_container) if self.check_azure and dest_container else []
+        self.dest_container = dest_container
 
     def _export_for_polygon(
         self,
@@ -160,7 +172,7 @@ class EarthEngineExporter:
 
         try:
             task = ee.batch.Export.image.toCloudStorage(
-                bucket=AZURE_CONTAINER_NAME,  # Azure Blob Storage container
+                bucket=AZURE_CONTAINER_NAME,
                 fileNamePrefix=filename,
                 image=img.clip(polygon),
                 description=ee_safe_str(filename),
@@ -246,3 +258,4 @@ class EarthEngineAPI:
                 "format": "GEO_TIFF",
             }
         )
+

@@ -16,3 +16,4 @@ gha-creds-*.json
 ./dvc/config
 config.py
 openmapflow/ee_exporter.py
+.env
