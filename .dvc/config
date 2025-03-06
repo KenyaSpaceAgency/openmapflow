@@ -3,6 +3,4 @@
 ['remote "azure-remote"']
     url = azure://openmap
     account_name = openmapflow
-<<<<<<< HEAD
-    ==
->>>>>>> 7f129cbf (refactored azure code)
+
