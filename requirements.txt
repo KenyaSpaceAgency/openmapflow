@@ -108,6 +108,7 @@ funcy==2.0
 fusepy==3.0.1
 gcsfs==2025.2.0
 geopandas==1.0.1
+git-filter-repo==2.47.0
 gitdb==4.0.12
 GitPython==3.1.44
 google-api-core==2.24.1
@@ -154,6 +155,7 @@ matplotlib==3.10.0
 matplotlib-inline==0.1.7
 mccabe==0.7.0
 mdurl==0.1.2
+mpmath==1.3.0
 msal==1.31.1
 msal-extensions==1.2.0
 msrest==0.7.1
@@ -167,13 +169,20 @@ netCDF4==1.7.2
 networkx==3.4.2
 numba==0.60.0
 numpy==1.23.5
-nvidia-cublas-cu11==11.10.3.66
-nvidia-cuda-nvrtc-cu11==11.7.99
-nvidia-cuda-runtime-cu11==11.7.99
-nvidia-cudnn-cu11==8.5.0.96
+nvidia-cublas-cu11==11.11.3.6
+nvidia-cuda-cupti-cu11==11.8.87
+nvidia-cuda-nvrtc-cu11==11.8.89
+nvidia-cuda-runtime-cu11==11.8.89
+nvidia-cudnn-cu11==9.1.0.70
+nvidia-cufft-cu11==10.9.0.58
+nvidia-curand-cu11==10.3.0.86
+nvidia-cusolver-cu11==11.4.1.48
+nvidia-cusparse-cu11==11.7.5.86
+nvidia-nccl-cu11==2.21.5
+nvidia-nvtx-cu11==11.8.86
 oauthlib==3.2.2
 omegaconf==2.3.0
--e git+https://github.com/KenyaSpaceAgency/openmapflow@d89c238dbc2dfc90f49c961d84f283dfedeed168#egg=openmapflow
+-e git+https://github.com/KenyaSpaceAgency/openmapflow@2b0bf0b1c46c616199a25db8f08dee229ab79905#egg=openmapflow
 orjson==3.10.15
 packaging==24.2
 pandas==1.5.3
@@ -213,6 +222,7 @@ pyparsing==3.2.1
 pyproj==3.7.1
 PySocks==1.7.1
 python-dateutil==2.9.0.post0
+python-dotenv==1.0.1
 pyts==0.13.0
 pytz==2025.1
 PyYAML==6.0.2
@@ -246,16 +256,19 @@ spacy-loggers==1.0.5
 sqltrie==0.11.1
 srsly==2.5.1
 stack-data==0.6.3
+sympy==1.13.1
 tabulate==0.9.0
 thinc==8.3.4
 threadpoolctl==3.5.0
 tomli==2.2.1
 tomlkit==0.13.2
-torch==1.13.1
+torch==2.6.0+cu118
+torchaudio==2.6.0+cu118
 torchserve==0.12.0
-torchvision==0.14.1
+torchvision==0.21.0+cu118
 tqdm==4.67.1
 traitlets==5.14.3
+triton==3.2.0
 tsai==0.3.5
 typer==0.15.1
 types-decorator==5.1.8.20250215
