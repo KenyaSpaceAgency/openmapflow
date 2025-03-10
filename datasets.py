@@ -5,6 +5,9 @@ from openmapflow.labeled_dataset import LabeledDataset
 # Define relative dataset directory
 DATASET_DIR = "datasets"  # Assuming datasets are in a 'datasets' subfolder
 
+# Define the label column name
+label_col = "eo_data"  # Replace "label" with the actual label column name
+
 def load_local_csv(filename):
     """Load a CSV dataset from a local file."""
     local_path = os.path.join(DATASET_DIR, filename)
@@ -13,6 +16,11 @@ def load_local_csv(filename):
         return pd.read_csv(local_path)
     else:
         raise FileNotFoundError(f"Dataset {filename} not found locally.")
+
+class LabeledDataset(LabeledDataset):
+    def load_df(self):
+        """Loads the dataframe"""
+        return self.load_labels()
 
 class LabeledDatasetWithProbFilter(LabeledDataset):
     """Base class with common class_prob filtering."""
@@ -23,18 +31,18 @@ class LabeledDatasetWithProbFilter(LabeledDataset):
         df = df[df["class_prob"] != 0.5].copy()
         return df
 
-class GeowikiLandcover2017(LabeledDatasetWithProbFilter):
-    filename = "GeowikiLandcover2017.csv"
+# class GeowikiLandcover2017(LabeledDatasetWithProbFilter):
+#     filename = "GeowikiLandcover2017.csv"
 
-class TogoCrop2019(LabeledDatasetWithProbFilter):
-    filename = "TogoCrop2019.csv"
+# class TogoCrop2019(LabeledDatasetWithProbFilter):
+#     filename = "TogoCrop2019.csv"
 
 class KenyaCrop201819(LabeledDataset):
     def load_labels(self):
         return load_local_csv("filterd_crops.csv")
 
 # Ensure instances of the correct class
-datasets = [GeowikiLandcover2017(), TogoCrop2019(), KenyaCrop201819()]
+datasets = [KenyaCrop201819()]
 
 # Debugging: Check class types before calling create_datasets
 for d in datasets:
