@@ -8,7 +8,6 @@ from openmapflow.engineer import process_test_file
 
 try:
     import torch
-
     TORCH_INSTALLED = True
 except ImportError:
     TORCH_INSTALLED = False
@@ -67,7 +66,6 @@ class Inference:
                 preds = self.model(batch_x)
             return preds.cpu().numpy()
         else:
-            # This code should never be reached
             raise ValueError(f"Unknown model type {self.model_type}")
 
     def run(
@@ -82,11 +80,14 @@ class Inference:
             x_np = (x_np - self.normalizing_dict["mean"]) / self.normalizing_dict["std"]
 
         batches = [
-            x_np[i : i + self.batch_size]  # noqa: E203
+            x_np[i : i + self.batch_size]
             for i in range(0, x_np.shape[0], self.batch_size)
         ]
         batch_predictions = [self._on_single_batch(b) for b in batches]
         combined_pred = self._combine_predictions(flat_lat, flat_lon, batch_predictions)
+        
         if dest_path is not None:
             combined_pred.to_xarray().to_netcdf(dest_path)
+            print(f"✅ Successfully created .nc file: {dest_path}")
+        
         return combined_pred

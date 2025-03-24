@@ -1,10 +1,12 @@
-version: 0.2.5rc1
-project: openmapflow
-description: OpenMapFlow openmapflow
-gcloud:
-    project_id: openmapflow-451211
-    location: us-central1
-    bucket_labeled_eo: openmapflow-labeled-eo
-    bucket_inference_eo: openmapflow-inference-eo
-    bucket_preds: openmapflow-preds
-    bucket_preds_merged: openmapflow-preds-merged
+project: "openmapflow_project"
+data_paths:
+  raw_labels: "/data/raw_labels"
+  datasets: "/data/datasets"
+  models: "/data/models"
+  metrics: "/data/metrics"
+  report: "/data/report"
+azure:
+  labeled_eo_container: "openmap"
+  inference_eo_container: "inference-eo-container"
+  preds_container: "preds-container"
+  preds_merged_container: "preds-merged-container"

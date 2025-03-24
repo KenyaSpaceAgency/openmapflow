@@ -1,0 +1,12 @@
+project: "openmapflow_project"
+data_paths:
+  raw_labels: "/data/raw_labels"
+  datasets: "/data/datasets"
+  models: "/data/models"
+  metrics: "/data/metrics"
+  report: "/data/report"
+azure:
+  labeled_eo_container: "openmap"
+  inference_eo_container: "inference-eo-container"
+  preds_container: "preds-container"
+  preds_merged_container: "preds-merged-container"

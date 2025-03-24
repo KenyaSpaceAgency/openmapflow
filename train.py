@@ -7,7 +7,7 @@ import numpy as np
 from datasets import datasets, label_col
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 from torch.utils.data import DataLoader
-import torchvision.models as models  # Import ResNet
+import torchvision.models as models
 import torch.nn as nn
 from openmapflow.bands import BANDS_MAX
 from openmapflow.constants import SUBSET
@@ -19,7 +19,7 @@ from openmapflow.train_utils import (
 )
 from openmapflow.utils import tqdm
 from sklearn.model_selection import train_test_split
-import rasterio # Add this line
+import rasterio
 
 warnings.simplefilter("ignore", UserWarning)
 
@@ -32,7 +32,7 @@ parser.add_argument("--batch_size", type=int, default=64)
 parser.add_argument("--upsample_minority_ratio", type=float, default=0.5)
 parser.add_argument("--lr", type=float, default=0.001)
 parser.add_argument("--epochs", type=int, default=10)
-parser.add_argument("--patch_size", type=int, default=128)  # add patch size argument
+parser.add_argument("--patch_size", type=int, default=128)
 
 args = parser.parse_args()
 start_month = args.start_month
@@ -42,11 +42,11 @@ num_epochs = args.epochs
 lr = args.lr
 model_name = args.model_name
 input_months = args.input_months
-patch_size = args.patch_size  # get patch size from argument.
+patch_size = args.patch_size
 
 # Load Dataset
 df = pd.read_csv("datasets/filterd_crops.csv")
-df = df[df["EO_FILE"].notna()]  # Remove nan values.
+df = df[df["EO_FILE"].notna()]
 print(f"Unique classes in dataset: {df[label_col].unique()}")
 
 # Split into train and validation
@@ -67,22 +67,17 @@ val_csv_path = "val_data.csv"
 train_df.to_csv(train_csv_path, index=False)
 val_df.to_csv(val_csv_path, index=False)
 
-train_data = PyTorchDataset(
-    train_csv_path, patch_size=patch_size
-)  # Use CSV paths, pass patch size.
-val_data = PyTorchDataset(
-    val_csv_path, patch_size=patch_size
-)  # Use CSV paths, pass patch size.
+train_data = PyTorchDataset(train_csv_path, patch_size=patch_size)
+val_data = PyTorchDataset(val_csv_path, patch_size=patch_size)
 
 train_dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
 val_dataloader = DataLoader(val_data, batch_size=batch_size, shuffle=False)
 
 # Model Definition (CNN)
 class CNNModel(nn.Module):
-    def __init__(self, num_classes, num_bands=4): # Add num_bands parameter
+    def __init__(self, num_classes, num_bands=4):
         super().__init__()
         self.resnet = models.resnet18(pretrained=True)
-        # Modify the first convolutional layer to accept num_bands channels
         self.resnet.conv1 = nn.Conv2d(num_bands, 64, kernel_size=7, stride=2, padding=3, bias=False)
         num_features = self.resnet.fc.in_features
         self.resnet.fc = nn.Linear(num_features, num_classes)
@@ -97,8 +92,11 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 with rasterio.open(train_df.iloc[0]['EO_FILE']) as src:
     num_bands = src.count
 
-# Initialize the model with the correct number of bands
-model = CNNModel(num_classes=len(train_df[label_col].unique()), num_bands=num_bands).to(device)
+# Get the number of unique classes from the training data
+num_classes = len(train_df[label_col].unique())
+
+# Initialize the model with the correct number of bands and classes
+model = CNNModel(num_classes=num_classes, num_bands=num_bands).to(device)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 criterion = torch.nn.CrossEntropyLoss()
@@ -117,7 +115,7 @@ with tqdm(range(num_epochs), desc="Epoch") as tqdm_epoch:
         model.train()
         for x in train_dataloader:
             inputs, labels = x[0].to(device), x[1].to(device)
-            print(f"Input shape: {inputs.shape}")  # Add this line
+            print(f"Input shape: {inputs.shape}")
             optimizer.zero_grad()
             outputs = model(inputs)
             loss = criterion(outputs, labels.long())

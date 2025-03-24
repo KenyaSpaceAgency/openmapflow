@@ -28,12 +28,26 @@ def update_dict(d: Dict, u: Mapping) -> Dict:
 
 
 def load_custom_config(path: Path) -> Dict:
-    if path.exists():
-        with path.open() as f:
-            return yaml.safe_load(f)
-    print(f"{path.name} not found in: {path.parent}\n")
-    print(f"Using folder as project name: {path.parent.name}")
-    return {"project": path.parent.name}
+    try:
+        if path.exists():
+            with path.open() as f:
+                print(f"Loading config from: {path}")  # Debug line
+                config = yaml.safe_load(f)
+                print(f"Config loaded: {config}")  # Debug line
+                return config
+        else:
+            print(f"{path.name} not found in: {path.parent}")
+            print(f"Using folder as project name: {path.parent.name}")
+            return {"project": path.parent.name}
+    except FileNotFoundError:
+        print(f"Error: Config file not found at {path}")
+        return None
+    except yaml.YAMLError as e:
+        print(f"Error: Invalid YAML in config file: {e}")
+        return None
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+        return None
 
 
 def load_default_config(project_name: str) -> Dict:
@@ -45,17 +59,33 @@ def load_default_config(project_name: str) -> Dict:
 cwd = Path.cwd()
 PROJECT_ROOT: Path = cwd.parent if (cwd.parent / CONFIG_FILE).exists() else cwd
 CUSTOM_CONFIG = load_custom_config(PROJECT_ROOT / CONFIG_FILE)
-PROJECT = CUSTOM_CONFIG["project"]
+
+if CUSTOM_CONFIG is None:
+    raise ValueError(
+        f"Custom configuration could not be loaded from {PROJECT_ROOT / CONFIG_FILE}. Please ensure the file exists and is valid."
+    )
+else:
+    PROJECT = CUSTOM_CONFIG["project"]
+
 DEFAULT_CONFIG = load_default_config(PROJECT)
 CONFIG_YML = update_dict(DEFAULT_CONFIG, CUSTOM_CONFIG)
 
 # Azure Blob Storage Configuration
-STORAGE_ACCOUNT_CONNECTION_STRING = os.environ.get("AZURE_STORAGE_CONNECTION_STRING", "DefaultEndpointsProtocol=https;AccountName=openmapflow;AccountKey=gBh30r5wqeU2HMhfG5jTmG0Ags++3rsYe1wTotQoxNK/EVnCnBCOt7ytHQrJuBya9/qMT/63xE3k+ASth7eOBQ==;EndpointSuffix=core.windows.net")
+STORAGE_ACCOUNT_CONNECTION_STRING = os.environ.get(
+    "AZURE_STORAGE_CONNECTION_STRING",
+    "DefaultEndpointsProtocol=https;AccountName=openmapflow;AccountKey=gBh30r5wqeU2HMhfG5jTmG0Ags++3rsYe1wTotQoxNK/EVnCnBCOt7ytHQrJuBya9/qMT/63xE3k+ASth7eOBQ==;EndpointSuffix=core.windows.net",
+)
 # You can define default container names here or in your config.yml and load them similarly to GCS buckets
-LABELED_EO_CONTAINER_NAME = CONFIG_YML.get("azure", {}).get("labeled_eo_container", "openmap")
-INFERENCE_EO_CONTAINER_NAME = CONFIG_YML.get("azure", {}).get("inference_eo_container", "inference-eo-container")
+LABELED_EO_CONTAINER_NAME = CONFIG_YML.get("azure", {}).get(
+    "labeled_eo_container", "openmap"
+)
+INFERENCE_EO_CONTAINER_NAME = CONFIG_YML.get("azure", {}).get(
+    "inference_eo_container", "inference-eo-container"
+)
 PREDS_CONTAINER_NAME = CONFIG_YML.get("azure", {}).get("preds_container", "preds-container")
-PREDS_MERGED_CONTAINER_NAME = CONFIG_YML.get("azure", {}).get("preds_merged_container", "preds-merged-container")
+PREDS_MERGED_CONTAINER_NAME = CONFIG_YML.get("azure", {}).get(
+    "preds_merged_container", "preds-merged-container"
+)
 
 
 class DataPaths:
@@ -83,7 +113,7 @@ class BucketNames:
     INFERENCE_EO = INFERENCE_EO_CONTAINER_NAME
     PREDS = PREDS_CONTAINER_NAME
     PREDS_MERGED = PREDS_MERGED_CONTAINER_NAME
-    STORAGE_ACCOUNT_CONNECTION_STRING = STORAGE_ACCOUNT_CONNECTION_STRING # Add connection string to BucketNames for easier access
+    STORAGE_ACCOUNT_CONNECTION_STRING = STORAGE_ACCOUNT_CONNECTION_STRING  # Add connection string to BucketNames for easier access
 
 
 def get_model_names_as_str() -> str:

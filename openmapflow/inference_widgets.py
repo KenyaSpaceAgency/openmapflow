@@ -28,9 +28,7 @@ except ModuleNotFoundError:
         + "`pip install ipyleaflet pyproj shapely ipywidgets`"
     )
 
-
 bbox_keys = ["min_lat", "min_lon", "max_lat", "max_lon"]
-
 
 @dataclass
 class InferenceBBox(BBox):
@@ -82,7 +80,6 @@ class InferenceBBox(BBox):
         # Done: 10:02:44
         pass
 
-
 def create_coords_widget(bbox, margin, update_bbox):
     coord_widgets = {}
     for k in bbox_keys + ["lat", "lon", "margin"]:
@@ -97,7 +94,6 @@ def create_coords_widget(bbox, margin, update_bbox):
         coord_widgets[k] = FloatText(value=round(value, 3), description=k, step=0.01)
         coord_widgets[k].observe(update_bbox)
     return coord_widgets
-
 
 def create_new_bbox_widget(get_bbox, coord_widgets):
     square_widget = VBox(
@@ -131,34 +127,40 @@ def create_new_bbox_widget(get_bbox, coord_widgets):
     toggle.observe(change_visibility)
     return VBox([toggle, square_widget, rectangle_widget])
 
-
 def create_available_bbox_widget(available_bboxes, update_event):
-    options = [bbox.name for bbox in available_bboxes]
-    select = Select(options=options, description="On Google Cloud")
-    select.observe(update_event)
+    """Creates a dropdown widget for available bounding boxes."""
+    options = [str(bbox) for bbox in available_bboxes]  # Use string representation of dict
+    select = Select(options=options, description="Available Bounding Boxes")
+    select.observe(lambda change: update_event(change.new))  # Pass the selected bbox dict
     return select
-
 
 class InferenceWidget:
     def __init__(
         self,
         available_models,
         available_bboxes=[],
-        lat: float = 7.72,
-        lon: float = 1.18,
-        margin: float = 0.02,
         start_date=date(2020, 2, 1),
         end_date=date(2021, 2, 1),
         verbose=False,
     ):
         self.verbose = verbose
-        self.bbox = InferenceBBox(
-            min_lat=lat - margin,
-            max_lat=lat + margin,
-            min_lon=lon - margin,
-            max_lon=lon + margin,
-        )
         self.available_bboxes = available_bboxes
+
+        # Initialize bbox based on available_bboxes or defaults
+        if available_bboxes:
+            first_bbox = available_bboxes[0]
+            self.bbox = InferenceBBox.from_bbox(first_bbox)
+        else:
+            lat: float = 7.72
+            lon: float = 1.18
+            margin: float = 0.02
+            self.bbox = InferenceBBox(
+                min_lat=lat - margin,
+                max_lat=lat + margin,
+                min_lon=lon - margin,
+                max_lon=lon + margin,
+                name="default", #Added default name, to prevent errors.
+            )
 
         # -----------------------------------------------------------------------
         # Initialize all widgets
@@ -168,7 +170,9 @@ class InferenceWidget:
             self.bbox.get_leaflet_rectangle(),
         )
         self.map = Map(layers=layers, center=self.bbox.center, zoom=11)
-        self.coord_widgets = create_coords_widget(self.bbox, margin, self.update_bbox)
+        self.coord_widgets = create_coords_widget(
+            self.bbox, (self.bbox.max_lat - self.bbox.min_lat) / 2, self.update_bbox
+        )
         self.new_bbox_widget = create_new_bbox_widget(
             lambda: self.bbox, self.coord_widgets
         )
@@ -195,7 +199,8 @@ class InferenceWidget:
         self.warning_HTML = HTML("", style={"color": "red"})
 
     def are_tifs_in_right_spot(self, map_key):
-        return any(map_key in b.name for b in self.available_bboxes)
+        """Checks if tifs are in the right spot."""
+        return any(map_key in str(b) for b in self.available_bboxes)
 
     def get_map_key(self):
         version = self.bbox.get_identifier(
@@ -235,12 +240,12 @@ class InferenceWidget:
 
     def get_estimates_HTML(self) -> str:
         return f"""
-          <div style='padding-left:1em'>
-          <h3>Estimates</h3>
-          <b>Area:</b> {self.bbox.get_area_km2():,.1f} km² <br>
-          <b>Time:</b> Coming soon. <br>
-          <b>Cost:</b> Coming soon.
-          <div/>
+            <div style='padding-left:1em'>
+            <h3>Estimates</h3>
+            <b>Area:</b> {self.bbox.get_area_km2():,.1f} km² <br>
+            <b>Time:</b> Coming soon. <br>
+            <b>Cost:</b> Coming soon.
+            <div/>
         """
 
     def get_warning_HTML(self, description):
@@ -279,6 +284,7 @@ class InferenceWidget:
                 max_lat=value + self.coord_widgets["margin"].value,
                 min_lon=self.bbox.min_lon,
                 max_lon=self.bbox.max_lon,
+                name=self.bbox.name,
             )
         elif key == "lon":
             self.bbox = InferenceBBox(
@@ -286,6 +292,7 @@ class InferenceWidget:
                 max_lat=self.bbox.max_lat,
                 min_lon=value - self.coord_widgets["margin"].value,
                 max_lon=value + self.coord_widgets["margin"].value,
+                name=self.bbox.name,
             )
         elif key == "margin":
             lat, lon = self.bbox.center
@@ -294,12 +301,13 @@ class InferenceWidget:
                 max_lat=lat + value,
                 min_lon=lon - value,
                 max_lon=lon + value,
+                name=self.bbox.name,
             )
         elif key in bbox_keys:
             kwargs = {k: v for k, v in self.bbox.__dict__.items() if k in bbox_keys}
             kwargs[key] = value
             try:
-                self.bbox = InferenceBBox(**kwargs)
+                self.bbox = InferenceBBox(**kwargs, name=self.bbox.name) #added name here.
                 self.warning_HTML.value = ""
             except ValueError as e:
                 self.warning_HTML.value = self.get_warning_HTML(str(e))
@@ -312,6 +320,12 @@ class InferenceWidget:
                 self.start_widget.value = datetime.strptime(ds[0], "%Y-%m-%d").date()
                 self.end_widget.value = datetime.strptime(ds[1], "%Y-%m-%d").date()
                 self.warning_HTML.value = ""
+
+                # Update coordinate input widgets
+                self.coord_widgets["lat"].value = self.bbox.center[0]
+                self.coord_widgets["lon"].value = self.bbox.center[1]
+                self.coord_widgets["margin"].value = (self.bbox.max_lat - self.bbox.min_lat) / 2
+
             except Exception as e:
                 self.warning_HTML.value = self.get_warning_HTML(str(e))
 
@@ -327,27 +341,28 @@ class InferenceWidget:
         )
 
     def change_new_vs_available(self, event):
-        try:
-            i = event["new"]["index"]
-        except Exception:
-            return
+        i = event["new"]["index"]
         if i == 0:
             self.available_bbox_widget.layout.display = "block"
-            self.new_bbox_widget.layout.display = "none"
             self.start_widget.disabled = True
             self.end_widget.disabled = True
-            self.update_bbox(
-                {
-                    "name": "value",
-                    "owner": self.available_bbox_widget,
-                    "new": self.available_bboxes[0].name,
-                }
-            )
+
+            # Initialize coordinate widgets with the first available bbox
+            if self.available_bboxes:
+                self.update_bbox(
+                    {
+                        "name": "value",
+                        "owner": self.available_bbox_widget,
+                        "new": str(self.available_bboxes[0]),
+                    }
+                )
+            self.new_bbox_widget.layout.display = "none"
+
         elif i == 1:
             self.available_bbox_widget.layout.display = "none"
-            self.new_bbox_widget.layout.display = "block"
             self.start_widget.disabled = False
             self.end_widget.disabled = False
+            self.new_bbox_widget.layout.display = "block"
 
     def ui(self):
         config_title = HTML("<h3>Select model and specify region of interest</h3>")
@@ -368,6 +383,17 @@ class InferenceWidget:
         model_and_toggle = VBox([self.model_picker, toggle])
         configuration = VBox([config_title, Box([model_and_toggle, dates])])
         self.change_new_vs_available({"new": {"index": 0}})
+
+        # Trigger initial update_bbox to populate coordinate widgets
+        if self.available_bboxes:
+            self.update_bbox(
+                {
+                    "name": "value",
+                    "owner": self.available_bbox_widget,
+                    "new": str(self.available_bboxes[0]),
+                }
+            )
+
         return VBox(
             [
                 Box([configuration, self.estimates_HTML]),
